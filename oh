@@ -1,0 +1,800 @@
+#!/bin/bash
+set -o posix
+set -u
+#
+# Copyright 2015, Aaron W. @ohdns.org
+# All Rights Reserved.
+# This software may be freely redistributed and/or modified under the
+# terms of the GNU General Public License as published by the Free
+# Software Foundation; either version 2, or (at your option) any
+# later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; see the file COPYING. If not, write to the
+# Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+# Author: Aaron W. <githubspam@ohdns.org>
+#
+# do little harm.
+/usr/bin/renice 19 -p $$ > /dev/null 2>&1
+#
+#  This script assumes that:
+#   You have ISOs in ~/build/centos7_simple_kickstart/isos
+#   Your VM's will live in ~/build/centos7_simple_kickstart/vm/__instance_name__
+#
+#  We are avoiding Vagrant on purpose so that you may
+#  create this same environment anywhere.
+#
+# We need the extensionpack to get PXE for installing the first host, the kickstart server itself.
+#  You can avoid that requirement by manually hitting the tab key when the ISO boots,
+#  backing over the word "quiet" and typing:
+#   cmdline nicdelay=10 ip=192.168.120.10 netmask=255.255.255.0 ks=http://192.168.120.1:8888/c7_server.cfg
+# ^  ^  ^  ^  ^
+#  I AM SKIPPING THIS PROCESS and folks will have to manually
+#  type 1 line when the FIRST VM boots for the first time.
+#
+# Our local "boot-strap" server is our laptop and it will have a private IP of 192.168.120.1
+#
+# Our Kickstart environment will have a private network of 192.168.120.0/24  (254 IP's usable)
+#
+# Our Kickstart server will be 192.168.120.10
+#
+# Repo: https://github.com/ohdns/centos7_simple_kickstart.git
+#
+# This script assumes your system defines the ${HOME} variable.  If not, set it.
+#   e.g.   HOME="/Users/my.name"; export HOME
+#
+umask 007
+#
+CURRENT_TIME=`date '+%Y%m%d%H%M%S'`
+export CURRENT_TIME
+
+# Validate GPG Signatures:  https://www.centos.org/keys/#centos-7-keys
+# Perhaps a location to get GPG keys over HTTPS from a non mirror:  https://git.centos.org/repositories/
+# Discuss GPG keys:  https://www.centos.org/community/calendar/#list
+
+
+
+############################### LOCALNET_INSTANTIATE
+localnet_instantiate()
+{
+PATH=${PATH}:/Applications/VirtualBox.app/Contents/MacOS:/bin:/sbin:/usr/bin:/usr/sbin:${HOME}/build/centos7_simple_kickstart/scripts
+export PATH
+#
+# Create vboxnet local interface
+# VBox is slow to instantiate the interfaces and will return a result code before it completes...
+VBOX_EXISTING_INTERFACE=`VBoxManage list -l hostonlyifs | grep -B3 "192\.168\.120\.1" | grep vboxnet | awk {'print $NF'}`
+VBOX_EXISTING_COUNT=`VBoxManage list -l hostonlyifs | grep -B3 "192\.168\.120\.1" | grep -c vboxnet`
+VBOX_NET_IS_UP=`ifconfig -a | grep -c "192\.168\.120\.1"`
+#
+ if [ ${VBOX_EXISTING_COUNT} -lt 1 ] ; then
+  printf "\n\nCreating HostOnlyIF\n"
+  OURHOSTONLYIF=`VBoxManage hostonlyif create 2>/dev/null | grep ^Interface | awk -F "\'" {'print $2'}`
+  printf "Setting ${OURHOSTONLYIF} to 192.168.120.1 netmask 255.255.255.0\n\n"
+  VBoxManage hostonlyif ipconfig ${OURHOSTONLYIF} --ip 192.168.120.1 --netmask 255.255.255.0
+  VBoxManage dhcpserver remove --netname HostInterfaceNetworking-${OURHOSTONLYIF} 2>/dev/null
+  export OURHOSTONLYIF
+  sleep 2
+
+ elif [ ${VBOX_EXISTING_COUNT} -gt 0 ] && [ ${VBOX_NET_IS_UP} -lt 1 ] ; then
+  VBoxManage hostonlyif ipconfig ${VBOX_EXISTING_INTERFACE} --ip 192.168.120.1 --netmask 255.255.255.0
+  VBoxManage dhcpserver remove --netname HostInterfaceNetworking-${VBOX_EXISTING_INTERFACE} 2>/dev/null
+  OURHOSTONLYIF=`printf "${VBOX_EXISTING_INTERFACE}"`
+  export OURHOSTONLYIF
+  sleep 2
+
+ elif  [ ${VBOX_EXISTING_COUNT} -gt 0 ] && [ ${VBOX_NET_IS_UP} -gt 0 ] ; then
+  printf "\n\nLooks like we have an existing vboxnet interface of ${VBOX_EXISTING_INTERFACE}.\n\n"
+  OURHOSTONLYIF=`printf "${VBOX_EXISTING_INTERFACE}"`
+  export OURHOSTONLYIF
+  sleep 2
+
+ else
+  printf "\n\nUnable to determine a way to bring up our vboxnet internface.\n\n"
+  exit 2
+ fi
+#
+sync
+}
+############################### LOCALNET_INSTANTIATE
+
+
+############################### LOCALNET_RSYYNC_AND_HTTPD
+localnet_httpd_and_rsync_listeners()
+{
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html
+mkdir -p ${HOME}/build/centos7_simple_kickstart/logs
+mkdir -p ${HOME}/build/centos7_simple_kickstart/tmp
+mkdir -p ${HOME}/build/centos7_simple_kickstart/etc
+chmod 0755 ${HOME}/build/centos7_simple_kickstart/www/html
+chmod 0700 ${HOME}/build/centos7_simple_kickstart/tmp
+chmod 0700 ${HOME}/build/centos7_simple_kickstart/etc
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/kickstart
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/config_files
+rsync -av --checksum ${HOME}/build/centos7_simple_kickstart/scripts/kickstart/. ${HOME}/build/centos7_simple_kickstart/www/html/kickstart/.
+rsync -av --checksum ${HOME}/build/centos7_simple_kickstart/scripts/config_files/. ${HOME}/build/centos7_simple_kickstart/www/html/config_files/.
+chmod 0644 ${HOME}/build/centos7_simple_kickstart/www/html/kickstart/c7*cfg
+
+cat << zzzAPACHEzzz > ${HOME}/build/centos7_simple_kickstart/etc/httpd.conf
+ServerTokens prod
+PidFile ${HOME}/build/centos7_simple_kickstart/tmp/httpd.pid
+ScoreBoardFile ${HOME}/build/centos7_simple_kickstart/tmp/.scoreboard
+KeepAlive off
+ServerRoot "/usr"
+Listen 192.168.120.1:8888
+LoadModule authz_core_module libexec/apache2/mod_authz_core.so
+LoadModule log_config_module libexec/apache2/mod_log_config.so
+LoadModule env_module libexec/apache2/mod_env.so
+LoadModule setenvif_module libexec/apache2/mod_setenvif.so
+LoadModule autoindex_module libexec/apache2/mod_autoindex.so
+LoadModule dir_module libexec/apache2/mod_dir.so
+LoadModule alias_module libexec/apache2/mod_alias.so
+LoadModule unixd_module libexec/apache2/mod_unixd.so
+Mutex sem
+ServerAdmin root@localhost
+ServerName 192.168.120.1
+ServerLimit 10240
+DirectoryIndex index.html
+DocumentRoot "${HOME}/build/centos7_simple_kickstart/www/html"
+<Directory "${HOME}/build/centos7_simple_kickstart/www">
+options indexes
+</Directory>
+ErrorLog "${HOME}/build/centos7_simple_kickstart/logs/error.log"
+LogLevel warn
+LogFormat "%h %l %u %t \"%r\" %>s %b" common
+SetEnvIf Request_URI "\.rpm" crap
+CustomLog "${HOME}/build/centos7_simple_kickstart/logs/access.log" common env=!crap
+TraceEnable off
+HostnameLookups off
+ServerSignature off
+EnableMMAP off
+EnableSendfile off
+
+zzzAPACHEzzz
+
+# -9 is safe here
+if [ -s ${HOME}/build/centos7_simple_kickstart/httpd.pid ] ; then
+kill -9 `cat ${HOME}/build/centos7_simple_kickstart/httpd.pid` && rm -f ${HOME}/build/centos7_simple_kickstart/httpd.pid
+fi
+sync
+sleep 1
+printf "\nStarting Local Apache Listener:  "
+for patchy in `seq 7`
+do
+ APACHECOUNT=`sleep 1;sync;netstat -an | grep LISTEN | egrep -c "192\.168\.120\.1\.8888"`
+ if [ ${APACHECOUNT} -lt 1 ] ; then
+ #/usr/sbin/httpd -T -f ${HOME}/build/centos7_simple_kickstart/etc/httpd.conf -E ${HOME}/build/centos7_simple_kickstart/logs/apache_startup.log -k start
+ /usr/sbin/httpd -T -f ${HOME}/build/centos7_simple_kickstart/etc/httpd.conf -k start
+ sleep ${patchy}
+ printf "."
+ fi
+done
+#
+# RSYNC CREATE CONFIG
+cat << zzzRSYNCzzz > ${HOME}/build/centos7_simple_kickstart/etc/rsyncd.conf
+uid = ${USER}
+use chroot = no
+max connections = 255
+lock file = ${HOME}/build/centos7_simple_kickstart/tmp/rsyncd.lock
+log file = ${HOME}/build/centos7_simple_kickstart/logs/rsyncd.log
+pid file = ${HOME}/build/centos7_simple_kickstart/tmp/rsyncd.pid 
+syslog facility = local5
+strict modes = false
+hosts allow = 192.168.120.0/24
+reverse lookup = no
+timeout = 30
+dont compress = *.gz *.tgz *.zip *.rpm *.bz2 *.7z *.rar *.jp* *.gif *.png *.mp*
+#refuse options = checksum delete
+refuse options = delete
+[www]
+list = true
+comment = "www"
+path = ${HOME}/build/centos7_simple_kickstart/www
+read only = yes
+
+zzzRSYNCzzz
+
+sync
+# RSYNC START
+if [ -s ${HOME}/build/centos7_simple_kickstart/tmp/rsyncd.pid ] ; then
+kill -9 `cat ${HOME}/build/centos7_simple_kickstart/tmp/rsyncd.pid && rm -f ${HOME}/build/centos7_simple_kickstart/tmp/rsyncd.pid`
+fi
+sync
+sleep 1
+printf "\nStarting Local RSYNCD Listener:  "
+for mysync in `seq 7`
+do
+RSYNCRUNNING=`sleep 1;sync;netstat -an | grep LISTEN | egrep -c "192\.168\.120\.1\.10873"`
+if [ ${RSYNCRUNNING} -lt 1 ] ; then
+rm -f ${HOME}/build/centos7_simple_kickstart/tmp/rsync*
+rsync --daemon --ipv4 --address=192.168.120.1 --port=10873 --config=${HOME}/build/centos7_simple_kickstart/etc/rsyncd.conf
+sync
+sleep ${mysync}
+printf "."
+fi
+done
+
+}
+############################### LOCALNET_RSYYNC_AND_HTTPD
+
+
+############################### UPDATE_SSH_CONFIG
+#
+update_ssh_config()
+{
+if [ ! -d ${HOME}/.ssh ] ; then
+mkdir --mode=0700 ${HOME}/.ssh
+fi
+if [ ! -f ${HOME}/.ssh/config ] ; then
+touch ${HOME}/.ssh/config
+chmod 0600 ${HOME}/.ssh/config
+fi
+OHCOUNT=`grep -c OHDNS ${HOME}/.ssh/config`
+if [ ${OHCOUNT} -gt 0 ] ; then
+printf "It appears you already updated ${HOME}/.ssh/config, sorry."
+exit 2
+fi
+cp -p ${HOME}/.ssh/config ${HOME}/.ssh/${CURRENT_TIME}_config.backup
+printf "Saved ${HOME}/.ssh/config  to  ${HOME}/.ssh/${CURRENT_TIME}_config.backup\nAppending configuration...\n"
+
+cat << zzzSSHCONFIGzzz >> ${HOME}/.ssh/config
+#
+# added by OHDNS Kickstart Automation Demo on ${CURRENT_TIME}
+# see https://github.com/ohdns/centos7_simple_kickstart
+#
+Host ohkickstart
+	Hostname 192.168.120.10
+	Port 22
+	User ohadmin
+	PubkeyAuthentication yes
+	ForwardAgent no
+	UserKnownHostsFile /dev/null
+	IdentityFile ${HOME}/.ssh/.oh_kickstart
+Host ohdocker
+	Hostname 192.168.120.11
+	Port 22
+	User ohadmin
+	PubkeyAuthentication yes
+	ForwardAgent no
+	UserKnownHostsFile /dev/null
+	IdentityFile ${HOME}/.ssh/.oh_docker
+Host ohanon
+	Hostname 192.168.120.12
+	Port 22
+	User ohadmin
+	PubkeyAuthentication yes
+	ForwardAgent no
+	UserKnownHostsFile /dev/null
+	IdentityFile ${HOME}/.ssh/.oh_anon
+Host ohproxy
+	Hostname 192.168.120.15
+	Port 22
+	User ohadmin
+	PubkeyAuthentication yes
+	ForwardAgent no
+	UserKnownHostsFile /dev/null
+	IdentityFile ${HOME}/.ssh/.oh_proxy
+Host ohhadoop
+	Hostname 192.168.120.24
+	Port 22
+	User ohadmin
+	PubkeyAuthentication yes
+	ForwardAgent no
+	UserKnownHostsFile /dev/null
+	IdentityFile ${HOME}/.ssh/.oh_hadoop
+Host ohansible
+	Hostname 192.168.120.32
+	Port 22
+	User ohadmin
+	PubkeyAuthentication yes
+	ForwardAgent no
+	UserKnownHostsFile /dev/null
+	IdentityFile ${HOME}/.ssh/.oh_ansible
+#
+
+zzzSSHCONFIGzzz
+
+printf "Generating SSH Keys for each VM.\n"
+for role in `echo "kickstart docker anon proxy hadoop ansible"`
+  do
+    if [ ! -s ${HOME}/.ssh/.oh_${role} ] ; then
+     ssh-keygen -q -t rsa -b 2048 -N "" -C "ohadmin@ohdns" -f ${HOME}/.ssh/.oh_${role}
+    fi
+  cat  ${HOME}/.ssh/.oh_${role}.pub > ${HOME}/build/centos7_simple_kickstart/www/html/${role}.pub.txt
+  done
+sync
+printf "Saved each Public key to ${HOME}/build/centos7_simple_kickstart/www/html/  for consumption by kickstart.\n"
+
+}
+
+############ ABOVE: The actual function.  BELOW: We are polite and get confirmation.
+
+ssh_config()
+{
+read -r -p "Would you like me to update ${HOME}/.ssh/config for you? [y/N] " response
+case $response in
+	[yY][eE][sS]|[yY]) 
+	update_ssh_config
+	;;
+	*)
+	printf "Canceled by request.\n"
+	;;
+esac
+
+}
+
+############################### UPDATE_SSH_CONFIG
+
+
+############################### REPO_SYNC
+repo_sync()
+{
+# CENTOS EPEL Repo exist? Repo current? If not, create or update it.
+printf "\n\nSyncing Public to Local Repo Copies.\n\nIMPORTANT: Avoid running this more than 4 times per day from your network to avoid being blocked.\n\n";sleep 4
+mkdir -p ${HOME}/build/centos7_simple_kickstart/etc
+mkdir -p ${HOME}/build/centos7_simple_kickstart/scripts
+mkdir -p ${HOME}/build/centos7_simple_kickstart/tmp
+mkdir -p ${HOME}/build/centos7_simple_kickstart/isos
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/kickstart
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/config_files
+#
+# CENTOS 7 directories
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/os/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/updates/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/extras/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/centosplus/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/7/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/dag/el7/en/x86_64
+#
+# rsync command and arguments.
+RS="rsync -avH --progress --delay-updates --delete --delete-after --exclude=repoview/ --exclude=debug/ --exclude=drpms/";export RS
+#
+# CENTOS 7 repo sync
+${RS} mirrors.kernel.org::centos/7/isos/x86_64/CentOS*NetInstall*.iso ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.
+${RS} mirrors.kernel.org::centos/7/os/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/os/x86_64/.
+${RS} mirrors.kernel.org::centos/7/updates/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/updates/x86_64/.
+${RS} mirrors.kernel.org::centos/7/extras/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/extras/x86_64/.
+${RS} mirrors.kernel.org::centos/7/centosplus/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/centosplus/x86_64/.
+#
+##  EPEL repo sync
+##  Uncomment next line if you do want a copy of the Fedora EPEL repo.  It is about 8GB or so.
+${RS} mirrors.cat.pdx.edu::fedora-epel/7/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/7/x86_64/.
+
+## DAG Wieers  http://apt.sw.be/RPM-GPG-KEY.dag.txt
+${RS} apt.sw.be::pub/freshrpms/pub/dag/redhat/el7/en/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/dag/el7/en/x86_64/.
+
+# validate ISO
+curl -A Mozilla -s https://wiki.centos.org/Manuals/ReleaseNotes/CentOS7 -o ${HOME}/build/centos7_simple_kickstart/www/html/mirror/c7_notes.html
+shasum -a 256 ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS*NetInsta*.iso > ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.validate_iso.txt
+NOTESUM=`egrep "CentOS.*NetInsta.*\.iso" ${HOME}/build/centos7_simple_kickstart/www/html/mirror/c7_notes.html | awk -F ">" {'print $3'} | awk {'print $1'}`
+LOCALSUM=`awk {'print $1'} ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.validate_iso.txt`
+printf "\n\nChecksum of ISO from centos.org: ${NOTESUM}\nChecksum of Local ISO: ${LOCALSUM}\n\n"
+#
+# VirtualBox GPG Key
+curl -A Mozilla -s https://www.virtualbox.org/download/oracle_vbox.asc -o ${HOME}/build/centos7_simple_kickstart/www/html/mirror/oracle_vbox.asc
+#
+#
+# DO NOT GET THESE FILES FROM A MIRROR.  Sorry, centos.org doesn't provide https on this site, derp.
+if [ ! -f ${HOME}/build/centos7_simple_kickstart/www/html/mirror/RPM-GPG-KEY-CentOS-7 ] ; then
+curl -A Mozilla -s http://mirror.centos.org/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7 -o ${HOME}/build/centos7_simple_kickstart/www/html/mirror/RPM-GPG-KEY-CentOS-7
+chmod 1444 ${HOME}/build/centos7_simple_kickstart/www/html/mirror/RPM-GPG-KEY-CentOS-7
+fi
+if [ ! -f ${HOME}/build/centos7_simple_kickstart/www/html/mirror/RPM-GPG-KEY-EPEL-7 ] ; then
+curl -A Mozilla -s https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7 -o ${HOME}/build/centos7_simple_kickstart/www/html/mirror/RPM-GPG-KEY-EPEL-7
+chmod 1444 ${HOME}/build/centos7_simple_kickstart/www/html/mirror/RPM-GPG-KEY-EPEL-7
+fi
+
+mkdir -p ${HOME}/build/centos7_simple_kickstart/logs
+mkdir -p ${HOME}/build/centos7_simple_kickstart/tmp
+mkdir -p ${HOME}/build/centos7_simple_kickstart/etc
+chmod 0755 ${HOME}/build/centos7_simple_kickstart/www/html
+chmod 0700 ${HOME}/build/centos7_simple_kickstart/tmp
+chmod 0700 ${HOME}/build/centos7_simple_kickstart/etc
+rsync -av --checksum ${HOME}/build/centos7_simple_kickstart/scripts/kickstart/. ${HOME}/build/centos7_simple_kickstart/www/html/kickstart/.
+rsync -av --checksum ${HOME}/build/centos7_simple_kickstart/scripts/config_files/. ${HOME}/build/centos7_simple_kickstart/www/html/config_files/.
+chmod 0644 ${HOME}/build/centos7_simple_kickstart/www/html/kickstart/c7*cfg
+
+}
+############################### REPO_SYNC
+
+
+############################### REPO_SYNC_6
+repo_sync_6()
+{
+RS="rsync -avH --progress --delay-updates --delete --delete-after --exclude=repoview/ --exclude=debug/ --exclude=drpms/";export RS
+#
+# Undocumented sync of CentOS 6 that some folks may need.
+#
+# CENTOS 6 directories
+mkdir -p ${HOME}/build/centos7_simple_kickstart/isos/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/os/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/updates/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/extras/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/6/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/dag/el6/en/x86_64
+#
+# CENTOS 6 repo sync
+${RS} mirrors.kernel.org::centos/6/isos/x86_64/CentOS*stall*.iso ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.
+${RS} mirrors.kernel.org::centos/6/os/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/os/x86_64/.
+${RS} mirrors.kernel.org::centos/6/updates/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/updates/x86_64/.
+${RS} mirrors.kernel.org::centos/6/extras/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/extras/x86_64/.
+${RS} mirrors.cat.pdx.edu::fedora-epel/6/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/6/x86_64/.
+
+## DAG Wieers  http://apt.sw.be/RPM-GPG-KEY.dag.txt
+${RS} apt.sw.be::pub/freshrpms/pub/dag/redhat/el6/en/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/dag/el6/en/x86_64/.
+#
+}
+############################### REPO_SYNC_6
+
+
+############################### BUILD_KS
+build_ks()
+{
+umask 007
+#
+MYNAME1="c7_kickstart_server"
+export MYNAME1
+
+# Create kickstart server VM
+# MYNAME1, small kickstart VM with CentOS and EPEL repos, DHCPD, TFTP, HTTPD
+if [ ! -f ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAM1}_os.vdi ] ; then
+mkdir -p ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}
+printf "\n\nCreating ${MYNAME1} in base folder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}\n\n"
+VBoxManage createvm --name ${MYNAME1} --ostype RedHat_64 --basefolder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1} --register
+VBoxManage modifyvm ${MYNAME1} --vrde off
+VBoxManage modifyvm ${MYNAME1} --usb off
+VBoxManage modifyvm ${MYNAME1} --clipboard disabled
+#VBoxManage modifyvm ${MYNAME1} --graphicscontroller none # must boot headless to use this
+VBoxManage modifyvm ${MYNAME1} --memory 1536 --vram 14 --cpus 2
+VBoxManage modifyvm ${MYNAME1} --firmware bios
+VBoxManage modifyvm ${MYNAME1} --audio none --chipset ich9
+# Use NSA OUI instead
+VBoxManage modifyvm ${MYNAME1} --nic1 hostonly --hostonlyadapter1 ${OURHOSTONLYIF} --nictype1 82545EM --macaddress1 000020914210
+#VBoxManage modifyvm ${MYNAME1} --nic1 hostonly --hostonlyadapter1 ${OURHOSTONLYIF} --nictype1 82545EM --macaddress1 080042424210
+#VBoxManage modifyvm ${MYNAME1} --nic2 intnet  --nictype2 82545EM --macaddress2 auto
+VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
+VBoxManage modifyvm ${MYNAME1} --biospxedebug off
+VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
+VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 dvd --boot3 none --boot4 none
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache off
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 75775 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
+fi
+#
+if [ -f ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1511.iso ] ; then
+VBoxManage storagectl ${MYNAME1} --name myide --add ide --controller PIIX4 --portcount 2 --hostiocache on
+VBoxManage storageattach ${MYNAME1} --storagectl myide --port 0 --device 0 --type dvddrive --medium ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1511.iso --type dvddrive --tempeject on
+else
+printf "\n\nThe NetInstall ISO ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1511.iso we expected appears to be missing.\n\n"
+ls -anhnto ${HOME}/build/centos7_simple_kickstart/isos/x86_64/*NetInstall*iso
+exit 2
+fi
+#
+VBoxManage startvm ${MYNAME1}
+#
+######################################### Create kickstart server VM
+
+printf "\n\nWhen the ISO boots, hit the TAB key, backspace over \"quiet\" and type:\n\tcmdline ip=192.168.120.10 netmask=255.255.255.0 ks=http://192.168.120.1:8888/kickstart/c7_server.cfg\n"
+printf "\n           In some rare cases, you may need to ALSO append:  ksdevice=bootif linksleep=30 nicdelay=30\n"
+printf "\nReminder: the post install section will take a while as it is copying data from your mac yum repos.\n\n"
+
+exit 0
+}
+############################### BUILD_KS
+
+
+############################### BUILD_DOCKER
+build_docker()
+{
+MYNAME1="c7_docker"
+export MYNAME1
+
+# Create DOCKER VM
+# Lets background these and just hope we dont nuke your poor CPU and disk.
+if [ ! -f ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi ] ; then
+printf "\n\nCreating ${MYNAME1} in base folder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}\n\n"
+mkdir -p ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}
+VBoxManage createvm --name ${MYNAME1} --ostype RedHat_64 --basefolder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1} --register
+VBoxManage modifyvm ${MYNAME1} --vrde off
+VBoxManage modifyvm ${MYNAME1} --usb off
+VBoxManage modifyvm ${MYNAME1} --clipboard disabled
+# THIS REQUIRES Headless Start # VBoxManage modifyvm ${MYNAME1} --graphicscontroller none
+VBoxManage modifyvm ${MYNAME1} --memory 1536 --vram 14 --cpus 2
+VBoxManage modifyvm ${MYNAME1} --firmware bios
+VBoxManage modifyvm ${MYNAME1} --audio none --chipset ich9
+VBoxManage modifyvm ${MYNAME1} --nic1 hostonly --hostonlyadapter1 ${OURHOSTONLYIF} --nictype1 82545EM --macaddress1 000020914211
+VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
+VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
+VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 net --boot3 none --boot4 none
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache off
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 11776 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
+fi
+VBoxManage startvm ${MYNAME1} &
+
+exit 0;
+
+# generate MAC ourselves so we can use it later if we need it.
+# leaving this here on purpose in case others find useful
+#MYNAME1MAC1=$(echo ${MYNAME1}_${USER}_int1 | openssl md5 | awk {'print $NF'} | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
+#MYNAME1MAC2=$(echo ${MYNAME1}_${USER}_int2 | openssl md5 | awk {'print $NF'} | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
+#MYNAME1MAC1_NOCOLON=`echo ${MYNAME1MAC1} | sed s/\://g`
+#MYNAME1MAC2_NOCOLON=`echo ${MYNAME1MAC2} | sed s/\://g`
+#MYNAME1MAC1_HYPHEN=`echo ${MYNAME1MAC1} | sed s/\:/\-/g`
+#MYNAME1MAC2_HYPHEN=`echo ${MYNAME1MAC2} | sed s/\:/\-/g`
+#
+}
+############################### BUILD_DOCKER
+
+
+############################### BUILD_ANSIBLE
+build_ansible()
+{
+MYNAME1="c7_ansible"
+export MYNAME1
+# Create ANSIBLE VM
+# Lets background these and just hope we dont nuke your poor CPU and disk.
+if [ ! -f ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi ] ; then
+printf "\n\nCreating ${MYNAME1} in base folder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}\n\n"
+mkdir -p ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}
+VBoxManage createvm --name ${MYNAME1} --ostype RedHat_64 --basefolder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1} --register
+VBoxManage modifyvm ${MYNAME1} --vrde off
+VBoxManage modifyvm ${MYNAME1} --usb off
+VBoxManage modifyvm ${MYNAME1} --clipboard disabled
+# THIS REQUIRES Headless Start # VBoxManage modifyvm ${MYNAME1} --graphicscontroller none
+VBoxManage modifyvm ${MYNAME1} --memory 2048 --vram 14 --cpus 2
+VBoxManage modifyvm ${MYNAME1} --firmware bios
+VBoxManage modifyvm ${MYNAME1} --audio none --chipset ich9
+VBoxManage modifyvm ${MYNAME1} --nic1 hostonly --hostonlyadapter1 ${OURHOSTONLYIF} --nictype1 82545EM --macaddress1 000020914232
+VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
+VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
+VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 net --boot3 none --boot4 none
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache off
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 32768 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
+fi
+VBoxManage startvm ${MYNAME1} &
+
+exit 0;
+
+}
+############################### BUILD_ANSIBLE
+
+
+############################### BUILD_POSTFIX_OUTBOUND
+build_proxy()
+{
+MYNAME1="c7_proxy"
+export MYNAME1
+
+# Create DevOps VM
+# Lets background these and just hope we dont nuke your poor CPU and disk.
+if [ ! -f ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi ] ; then
+printf "\n\nCreating ${MYNAME1} in base folder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}\n\n"
+mkdir -p ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}
+VBoxManage createvm --name ${MYNAME1} --ostype RedHat_64 --basefolder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1} --register
+VBoxManage modifyvm ${MYNAME1} --vrde off
+VBoxManage modifyvm ${MYNAME1} --usb off
+VBoxManage modifyvm ${MYNAME1} --clipboard disabled
+# THIS REQUIRES Headless Start # VBoxManage modifyvm ${MYNAME1} --graphicscontroller none
+VBoxManage modifyvm ${MYNAME1} --memory 1536 --vram 14 --cpus 2
+VBoxManage modifyvm ${MYNAME1} --firmware bios
+VBoxManage modifyvm ${MYNAME1} --audio none --chipset ich9
+VBoxManage modifyvm ${MYNAME1} --nic1 hostonly --hostonlyadapter1 ${OURHOSTONLYIF} --nictype1 82545EM --macaddress1 000020914215
+VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
+#
+# talk to the outside world? select proper interface below
+# VBoxManage modifyvm ${MYNAME1} --nic2 bridged --bridgeadapter2 en4 --nictype2 82545EM --macaddress2 002091696915
+# VBoxManage modifyvm ${MYNAME1} --nicpromisc2 allow-all
+VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
+VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 net --boot3 none --boot4 none
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache off
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 16384 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
+fi
+VBoxManage startvm ${MYNAME1} &
+
+exit 0;
+
+}
+############################### BUILD_POSTFIX_OUTBOUND
+
+
+############################### BUILD_HADOOP
+build_hadoop()
+{
+MYNAME1="c7_hadoop"
+export MYNAME1
+
+# Create DevOps VM
+# Lets background these and just hope we dont nuke your poor CPU and disk.
+if [ ! -f ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi ] ; then
+printf "\n\nCreating ${MYNAME1} in base folder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}\n\n"
+mkdir -p ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}
+VBoxManage createvm --name ${MYNAME1} --ostype RedHat_64 --basefolder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1} --register
+VBoxManage modifyvm ${MYNAME1} --vrde off
+VBoxManage modifyvm ${MYNAME1} --usb off
+VBoxManage modifyvm ${MYNAME1} --clipboard disabled
+# THIS REQUIRES Headless Start # VBoxManage modifyvm ${MYNAME1} --graphicscontroller none
+VBoxManage modifyvm ${MYNAME1} --memory 4096 --vram 14 --cpus 6
+VBoxManage modifyvm ${MYNAME1} --firmware bios
+VBoxManage modifyvm ${MYNAME1} --audio none --chipset ich9
+VBoxManage modifyvm ${MYNAME1} --nic1 hostonly --hostonlyadapter1 ${OURHOSTONLYIF} --nictype1 82545EM --macaddress1 000020914224
+VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
+#
+# talk to the outside world? select proper interface below
+# VBoxManage modifyvm ${MYNAME1} --nic2 bridged --bridgeadapter2 en4 --nictype2 82545EM --macaddress2 002091696924
+# VBoxManage modifyvm ${MYNAME1} --nicpromisc2 allow-all
+VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
+VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 net --boot3 none --boot4 none
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 16 --hostiocache off
+#
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 16384 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
+#
+
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdb.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 1 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdb.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdc.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 2 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdc.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdd.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 3 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdd.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sde.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 4 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sde.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdf.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 5 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdf.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdg.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 6 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdg.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdh.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 7 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdh.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdi.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 8 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdi.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdj.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 9 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdj.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdk.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 10 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdk.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdl.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 11 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdl.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdm.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 12 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdm.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdn.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 13 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdn.vdi --type hdd
+sync
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdo.vdi" --size 255 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 14 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_sdo.vdi --type hdd
+sync
+
+fi
+VBoxManage startvm ${MYNAME1} &
+
+exit 0;
+
+}
+############################### BUILD_HADOOP
+
+
+############################### BUILD_DEVOPS
+build_devops()
+{
+MYNAME1="c7_devops"
+export MYNAME1
+
+# Create DevOps VM
+# Lets background these and just hope we dont nuke your poor CPU and disk.
+if [ ! -f ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi ] ; then
+printf "\n\nCreating ${MYNAME1} in base folder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}\n\n"
+mkdir -p ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}
+VBoxManage createvm --name ${MYNAME1} --ostype RedHat_64 --basefolder ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1} --register
+VBoxManage modifyvm ${MYNAME1} --vrde off
+VBoxManage modifyvm ${MYNAME1} --usb off
+VBoxManage modifyvm ${MYNAME1} --clipboard disabled
+# THIS REQUIRES Headless Start # VBoxManage modifyvm ${MYNAME1} --graphicscontroller none
+VBoxManage modifyvm ${MYNAME1} --memory 8192 --vram 14 --cpus 4
+VBoxManage modifyvm ${MYNAME1} --firmware bios
+VBoxManage modifyvm ${MYNAME1} --audio none --chipset ich9
+VBoxManage modifyvm ${MYNAME1} --nic1 hostonly --hostonlyadapter1 ${OURHOSTONLYIF} --nictype1 82545EM --macaddress1 000020914216
+VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
+VBoxManage modifyvm ${MYNAME1} --nic2 bridged --bridgeadapter2 en4 --nictype2 82545EM --macaddress2 002091696916
+VBoxManage modifyvm ${MYNAME1} --nicpromisc2 allow-all
+VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
+VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 net --boot3 none --boot4 none
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache off
+VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 45840 --variant Fixed
+VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
+fi
+VBoxManage startvm ${MYNAME1} &
+######################################### Create DevOps VM
+
+exit 0;
+
+}
+############################### BUILD_DEVOPS
+
+
+
+
+set +u
+
+case "$1" in
+
+listeners)
+	localnet_instantiate;
+	localnet_httpd_and_rsync_listeners;
+	;;
+repo_sync)
+	localnet_instantiate;
+	localnet_httpd_and_rsync_listeners;
+	repo_sync;
+	;;
+repo_sync_6)
+	localnet_instantiate;
+	localnet_httpd_and_rsync_listeners;
+	repo_sync_6;
+	;;
+ssh_config)
+	ssh_config;
+	;;
+build_ks)
+	localnet_instantiate;
+	localnet_httpd_and_rsync_listeners;
+	build_ks;
+	;;
+build_docker)
+	localnet_instantiate;
+	build_docker;
+	;;
+build_ansible)
+	localnet_instantiate;
+	build_ansible;
+	;;
+build_anon)
+	localnet_instantiate;
+	build_anon;
+	;;
+build_proxy)
+	localnet_instantiate;
+	build_proxy;
+	;;
+build_hadoop)
+	localnet_instantiate;
+	build_hadoop;
+	;;
+build_devops)
+	localnet_instantiate;
+	build_devops;
+	;;
+
+  *)
+        printf $"Usage: $0 { repo_sync | ssh_config | build_ks | build_docker | build_anon | build_proxy | build_devops | help }\n\n"
+	printf "repo_sync:	Step 1: Sync public internet CentOS and EPEL to your laptop\n\n"
+	printf "ssh_config:	Step 2: Update ssh config with your kickstart VMs and give them their own ssh keys.\n\n"
+	printf "build_ks:	Step 3: Build your Kickstart VM.  This one requires a little bit of typing, sorry.\n\n"
+	printf "build_docker:	Optional: Build a Docker VM.\n\n"
+	printf "build_ansible:	Optional: Build an Ansible VM.\n\n"
+	printf "build_anon:	WIP: Build an Anonymous File Sharing Web Server, WORK IN PROGRESS.\n\n"
+	printf "build_proxy:	WIP: Build an outbound email and web proxy, WORK IN PROGRESS.\n\n"
+	printf "build_hadoop:	WIP: Build a test hadoop box, that does not have hadoop on it, just testing here. WORK IN PROGRESS\n\n"
+	printf "build_devops:	Optional: Build a DevOps VM to tinker with various technologies.\n\n"
+	printf "anything_else:	This menu.\n\n"
+        exit 2
+esac
+
+
+exit 0;
