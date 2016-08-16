@@ -126,7 +126,9 @@ Confine as many applications as you can, to the least amount of privilages requi
 Use audit2allow, audit2why or grep through /var/log/audit/audit.log to see why something was denied.<br />
 <b>As a last resort</b>, set a user or process to <i>unconfined</i> or <i>permissive</i> instead of disabling SELinux.</li>
 
-<li>Prefer a chroot restricted SFTP over unrestricted SSH trusts when feasible.</li>
+<li>Prefer a chroot restricted SFTP over unrestricted SSH trusts when feasible.<br />
+You can accomplish the same behavior of rsync using SFTP Chroot + LFTP and it's mirror subsystem, without having to expose your entire system or provide shells to people. It is faster than rsync and more secure.<br />
+</li>
 
 <li>For custom applications, clearly define:<br />
 where the application binaries should be installed. <i>i.e. /opt/application_name/{etc,bin,sbin,var}</i><br />
