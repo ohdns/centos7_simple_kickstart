@@ -19,6 +19,7 @@ set -u
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # Author: Aaron W. <githubspam@ohdns.org>
+# 20160816
 #
 # do little harm.
 /usr/bin/renice 19 -p $$ > /dev/null 2>&1
