@@ -65,8 +65,9 @@ rsync -av centos7_simple_kickstart/. ~/build/centos7_simple_kickstart/scripts/.
 I would show how to generate a SHA512 shadow hash, but each OS and each version of Python behaves dramatically different in this area.<br /><br />
 The <b>default password</b> for <b>ohadmin</b> and <b>root</b> will be <b><i><u>centos7</u></i></b><br />
 The <i>ohadmin</i> account will be used for automation; and <i>temporarily</i>, the way you ssh to your VM for manual changes or container deployments.
-<br /><br />
-<b>It is assumed that you will change all passwords and ssh keys before doing something risky, such as bridging your kickstart VM onto a non private network</b><br /><br />
+<br /><br /><br />
+<b>It is assumed that you will change all passwords and ssh keys before doing something risky, such as bridging your kickstart VM onto a non private network</b>
+<br /><br /><br />
 
 <li>
  <b>Step 1: Execute</b> <code>~/build/centos7_simple_kickstart/scripts/oh repo_sync</code>
