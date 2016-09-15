@@ -59,6 +59,7 @@ git clone https://github.com/ohdns/centos7_simple_kickstart.git
 rsync -av centos7_simple_kickstart/. ~/build/centos7_simple_kickstart/scripts/.
 </code>
 <br /><br />
+<b>This is so that you have a working copy you can edit. &nbsp; Please do feel free to fork this.</b><br /><br />
 
 <li><i>OPTIONAL:</i>
  Edit the .cfg files in ~/build/centos7_simple_kickstart/scripts and replace the SHA512 hashes with your own.<br />
@@ -147,9 +148,9 @@ The base configuration belongs in kickstart and customization needs to be done i
 All services need to be initialized by a proper startup script when the server OS starts up.</li>
 
 <li>Avoid using sudo. If you find yourself using <code>sudo su -</code> or <code>sudo -s</code> then you really just need the root password.
- Sudo is not a security tool. It is designed to allow a sysadmin to delegate commands <i>as a user</i>, to a set of users.
+ <b>Sudo is not a security tool.</b> It is designed to allow a sysadmin to delegate commands <i>as a user</i>, to a set of users.
  If you can get a root shell through sudo, then it is misconfigured.  
- Sudo is potentially a security risk if your users have un-restricted sudo and they get phished. This is equally a risk in both a production customer facing environment and a development or continuous integration environment, as both ultimately touch customer data.</li>
+ Sudo is potentially a critical security risk if your users have un-restricted sudo and they get phished. This is equally a risk in both a production customer facing environment and a development or continuous integration environment, as both ultimately touch customer data.<br /><br />Create yourself a counter. &nbsp; Every time you type sudo, subtract 10 engineering points.</li>
 
 </ul>
 </p>
@@ -192,6 +193,6 @@ Power On Headless (No GUI / console):<br />
 <br />If you use VirtualBox a bit from the command line, then you may with to update the PATH in your ~/.bash_profile<br /><br />
 </p>
 ___
-<p><b><br />Disclaimer: This repo contains scripts that are for educational purposes only.  This repo contains default passwords that must not be used anywhere beyond VirtualBox on your laptop for educational purposes only. DO NOT use this to deploy a production environment unless you have properly changed all defaults, changed settings to reflect that which is approved for your environment and have properly tested this in a lab and staging area that matches your live environments.  The author of these scripts assumes no responsibility for damages to persons or property.  Do not bridge any VM's to a network outside of localnet without first understanding the potential consequences.<br /><br /></b><br /></p>
+<p><b><br />Disclaimer: This software repository contains scripts that are for educational purposes only.  This repo contains default passwords that must not be used anywhere beyond VirtualBox on your laptop for educational purposes only. DO NOT use this to deploy a production environment unless you have properly changed all defaults, changed settings to reflect that which is approved for your environment and have properly tested this in a lab and staging area that matches your live environments.  The author of these scripts assumes no responsibility for damages to persons or property.  Do not bridge any VM's to a network outside of localnet without first understanding the potential consequences and having the appropriate personnel in your organization validate and accept the risks.<br /><br /></b><br /></p>
 ___
 <i>20160915</i>
