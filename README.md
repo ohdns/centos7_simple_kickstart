@@ -66,6 +66,7 @@ I would show how to generate a SHA512 shadow hash, but each OS and each version 
 The <b>default password</b> for <b>ohadmin</b> and <b>root</b> will be <b><i><u>centos7</u></i></b><br />
 The <i>ohadmin</i> account will be used for automation; and <i>temporarily</i>, the way you ssh to your VM for manual changes or container deployments.
 <br /><br />
+<b>It is assumed that you will change all passwords and ssh keys before doing something risky, such as bridging your kickstart VM onto a non private network</b><br /><br />
 
 <li>
  <b>Step 1: Execute</b> <code>~/build/centos7_simple_kickstart/scripts/oh repo_sync</code>
@@ -192,4 +193,4 @@ Power On Headless (No GUI / console):<br />
 ___
 <p><b><br />Disclaimer: This repo contains scripts that are for educational purposes only.  This repo contains default passwords that must not be used anywhere beyond VirtualBox on your laptop for educational purposes only. DO NOT use this to deploy a production environment unless you have properly changed all defaults, changed settings to reflect that which is approved for your environment and have properly tested this in a lab and staging area that matches your live environments.  The author of these scripts assumes no responsibility for damages to persons or property.  Do not bridge any VM's to a network outside of localnet without first understanding the potential consequences.<br /><br /></b><br /></p>
 ___
-<i>20160816</i>
+<i>20160915</i>
