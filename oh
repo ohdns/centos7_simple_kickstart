@@ -467,11 +467,11 @@ VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNA
 VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
 fi
 #
-if [ -f ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1511.iso ] ; then
+if [ -f ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1611.iso ] ; then
 VBoxManage storagectl ${MYNAME1} --name myide --add ide --controller PIIX4 --portcount 2 --hostiocache on
-VBoxManage storageattach ${MYNAME1} --storagectl myide --port 0 --device 0 --type dvddrive --medium ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1511.iso --type dvddrive --tempeject on
+VBoxManage storageattach ${MYNAME1} --storagectl myide --port 0 --device 0 --type dvddrive --medium ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1611.iso --type dvddrive --tempeject on
 else
-printf "\n\nThe NetInstall ISO ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1511.iso we expected appears to be missing.\n\n"
+printf "\n\nThe NetInstall ISO ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1611.iso we expected appears to be missing.\n\n"
 ls -anhnto ${HOME}/build/centos7_simple_kickstart/isos/x86_64/*NetInstall*iso
 exit 2
 fi
