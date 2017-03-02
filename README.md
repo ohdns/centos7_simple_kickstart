@@ -96,7 +96,7 @@ Kickstart your <i>new kickstart VM server</i>.  <b>You should only have to run t
 <br /><br />
 <b>When the first VM starts</b>, you should see a CentOS ISO install screen.<br />
 <b>At this point</b>, hit the TAB key, backspace over <i>quiet</i> and type:<br /><br />
-<code>cmdline ip=192.168.120.10 netmask=255.255.255.0 ks=http://192.168.120.1:8888/c7_server.cfg nicdelay=30</code><br /><br />
+<code>cmdline ip=192.168.120.10 netmask=255.255.255.0 ks=http://192.168.120.1:8888/c7_server.cfg nicdelay=20</code><br /><br />
 This will build the first VM (the kickstart server role) and will rsync the Yum repos to itself, pulling from your laptop. Get a cup of coffee or tea while this runs.<br /><br />
 Once this step completes, you should be able (from your laptop terminal) to type: <code>ssh ohkickstart</code><br />
 <br /><br />
@@ -134,9 +134,9 @@ You can accomplish the same behavior of rsync using SFTP Chroot + LFTP and it's 
 </li>
 
 <li>For custom applications, clearly define:<br />
-where the application binaries should be installed. <i>i.e. /opt/application_name/{etc,bin,sbin,var}</i><br />
-where the application logs should reside. <i>i.e. /data/application_name/logs</i><br />
-where transitory data should reside. <i>i.e. /data/application_name/data</i><br />
+where the application binaries should be installed. <i>i.e. /opt/application_name/{etc,lib,include,bin,sbin}</i><br />
+where the application logs should reside. <i>i.e. /data/application_name/{var,logs}</i><br />
+where transitory data should reside. <i>i.e. /data/application_name/{data,db}</i><br />
 or better, <b>use containers!</b> to keep the OS pristine and easy to patch.</li>
 
 <li>Configure your applications, users, and group posix permissions to allow the right folks to view logs, restart services, or otherwise manage their job role without having to elevate privs to root.  If non sysadmins are needing root or sudo to get their job done, then the sysadmin has more work to do, sorry.  Get a sysadmin, a developer, a devops person into a room and sort it out.  You will save thousands of hours or work for yourselves.</li>
@@ -195,4 +195,4 @@ Power On Headless (No GUI / console):<br />
 ___
 <p><b><br />Disclaimer: This software repository contains scripts that are for educational purposes only.  This repo contains default passwords that must not be used anywhere beyond VirtualBox on your laptop for educational purposes only. DO NOT use this to deploy a production environment unless you have properly changed all defaults, changed settings to reflect that which is approved for your environment and have properly tested this in a lab and staging area that matches your live environments.  The author of these scripts assumes no responsibility for damages to persons or property.  Do not bridge any VM's to a network outside of localnet without first understanding the potential consequences and having the appropriate personnel in your organization validate and accept the risks.<br /><br /></b>TL;DR - <i>Get someone else to sign off and accept the risk for using someone elses scripts in your environment.</i><br /><br /></p>
 ___
-<i>20160915</i>
+<i>20170302</i>
