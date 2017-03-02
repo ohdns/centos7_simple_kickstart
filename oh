@@ -340,7 +340,7 @@ printf "\n\nSyncing Public to Local Repo Copies.\n\nIMPORTANT: Avoid running thi
 mkdir -p ${HOME}/build/centos7_simple_kickstart/etc
 mkdir -p ${HOME}/build/centos7_simple_kickstart/scripts
 mkdir -p ${HOME}/build/centos7_simple_kickstart/tmp
-mkdir -p ${HOME}/build/centos7_simple_kickstart/isos
+mkdir -p ${HOME}/build/centos7_simple_kickstart/isos/x86_64
 mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/kickstart
 mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/config_files
 #
