@@ -407,28 +407,26 @@ chmod 0644 ${HOME}/build/centos7_simple_kickstart/www/html/kickstart/c7*cfg
 ############################### REPO_SYNC_6
 repo_sync_6()
 {
-RS="rsync -avH --progress --delay-updates --delete --delete-after --exclude=repoview/ --exclude=debug/ --exclude=drpms/";export RS
+#RS="rsync -avH --progress --delay-updates --delete --delete-after --exclude=repoview/ --exclude=debug/ --exclude=drpms/";export RS
 #
 # Undocumented sync of CentOS 6 that some folks may need.
 #
-# CENTOS 6 directories
-mkdir -p ${HOME}/build/centos7_simple_kickstart/isos/x86_64
-mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/os/x86_64
-mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/updates/x86_64
-mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/extras/x86_64
-mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/6/x86_64
-#mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/dag/el6/en/x86_64
-#
-# CENTOS 6 repo sync
-${RS} mirrors.kernel.org::centos/6/isos/x86_64/CentOS*stall*.iso ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.
-${RS} mirrors.kernel.org::centos/6/os/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/os/x86_64/.
-${RS} mirrors.kernel.org::centos/6/updates/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/updates/x86_64/.
-${RS} mirrors.kernel.org::centos/6/extras/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/extras/x86_64/.
-${RS} mirrors.cat.pdx.edu::fedora-epel/6/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/6/x86_64/.
-
-## DAG Wieers  http://apt.sw.be/RPM-GPG-KEY.dag.txt
-#${RS} apt.sw.be::pub/freshrpms/pub/dag/redhat/el6/en/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/dag/el6/en/x86_64/.
-#
+## CENTOS 6 directories
+echo "Disabled C6 rsync.  Uncomment in "oh" script."
+exit 1;
+#mkdir -p ${HOME}/build/centos7_simple_kickstart/isos/x86_64
+#mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/os/x86_64
+#mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/updates/x86_64
+#mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/extras/x86_64
+#mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/6/x86_64
+##mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/dag/el6/en/x86_64
+##
+## CENTOS 6 repo sync
+#${RS} mirrors.kernel.org::centos/6/isos/x86_64/CentOS*stall*.iso ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.
+#${RS} mirrors.kernel.org::centos/6/os/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/os/x86_64/.
+#${RS} mirrors.kernel.org::centos/6/updates/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/updates/x86_64/.
+#${RS} mirrors.kernel.org::centos/6/extras/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/extras/x86_64/.
+#${RS} mirrors.cat.pdx.edu::fedora-epel/6/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/6/x86_64/.
 }
 ############################### REPO_SYNC_6
 
