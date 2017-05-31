@@ -21,6 +21,8 @@ ___
 # Notational Conventions
 
 <p>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in <b>RFC-2119</b>.</p>
+<br />
+<p>The key words "MUST (BUT WE KNOW YOU WON'T)", "SHOULD CONSIDER", and "REALLY SHOULD NOT" are to be interpreted as described in <b>RFC-6919</b>.</p>
 
 ___
 
