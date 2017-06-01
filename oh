@@ -449,7 +449,7 @@ VBoxManage modifyvm ${MYNAME1} --vrde off
 VBoxManage modifyvm ${MYNAME1} --usb off
 VBoxManage modifyvm ${MYNAME1} --clipboard disabled
 #VBoxManage modifyvm ${MYNAME1} --graphicscontroller none # must boot headless to use this
-VBoxManage modifyvm ${MYNAME1} --memory 1536 --vram 14 --cpus 2
+VBoxManage modifyvm ${MYNAME1} --memory 2048 --vram 14 --cpus 2
 VBoxManage modifyvm ${MYNAME1} --firmware bios
 VBoxManage modifyvm ${MYNAME1} --audio none --chipset ich9
 # Use NSA OUI instead
