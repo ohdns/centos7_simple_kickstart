@@ -356,7 +356,7 @@ mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/7/x86_64
 RS="rsync -avH --progress --delay-updates --delete --delete-after --exclude=repoview/ --exclude=debug/ --exclude=drpms/";export RS
 #
 # CENTOS 7 repo sync
-${RS} mirrors.kernel.org::centos/7/isos/x86_64/CentOS*NetInstall*.iso ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.
+${RS} mirrors.kernel.org::centos/7/isos/x86_64/CentOS-7-x86_64-NetInstall*iso ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.
 ${RS} mirrors.kernel.org::centos/7/os/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/os/x86_64/.
 ${RS} mirrors.kernel.org::centos/7/updates/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/updates/x86_64/.
 ${RS} mirrors.kernel.org::centos/7/extras/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/extras/x86_64/.
