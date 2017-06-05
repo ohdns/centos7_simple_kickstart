@@ -460,7 +460,7 @@ VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
 VBoxManage modifyvm ${MYNAME1} --biospxedebug off
 VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
 VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 dvd --boot3 none --boot4 none
-VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache off
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache on
 VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 75775 --variant Fixed
 VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
 fi
@@ -510,7 +510,7 @@ VBoxManage modifyvm ${MYNAME1} --nic1 hostonly --hostonlyadapter1 ${OURHOSTONLYI
 VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
 VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
 VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 net --boot3 none --boot4 none
-VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache off
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache on
 VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 11776 --variant Fixed
 VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
 fi
@@ -553,7 +553,7 @@ VBoxManage modifyvm ${MYNAME1} --nic1 hostonly --hostonlyadapter1 ${OURHOSTONLYI
 VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
 VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
 VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 net --boot3 none --boot4 none
-VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache off
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache on
 VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 32768 --variant Fixed
 VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
 fi
@@ -592,7 +592,7 @@ VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
 # VBoxManage modifyvm ${MYNAME1} --nicpromisc2 allow-all
 VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
 VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 net --boot3 none --boot4 none
-VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache off
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache on
 VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 16384 --variant Fixed
 VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
 fi
@@ -631,7 +631,7 @@ VBoxManage modifyvm ${MYNAME1} --nicpromisc1 allow-all
 # VBoxManage modifyvm ${MYNAME1} --nicpromisc2 allow-all
 VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
 VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 net --boot3 none --boot4 none
-VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 16 --hostiocache off
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 16 --hostiocache on
 #
 VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 16384 --variant Fixed
 VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
@@ -714,7 +714,7 @@ VBoxManage modifyvm ${MYNAME1} --nic2 bridged --bridgeadapter2 en4 --nictype2 82
 VBoxManage modifyvm ${MYNAME1} --nicpromisc2 allow-all
 VBoxManage modifyvm ${MYNAME1} --nicbootprio1 1
 VBoxManage modifyvm ${MYNAME1} --boot1 disk --boot2 net --boot3 none --boot4 none
-VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache off
+VBoxManage storagectl ${MYNAME1} --name mysata --add sata --controller IntelAHCI --portcount 2 --hostiocache on
 VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi" --size 45840 --variant Fixed
 VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
 fi
