@@ -19,10 +19,10 @@ set -u
 # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # Author: Aaron W. <githubspam@ohdns.org>
-# 20160816
+# 20170714
 #
-# do little harm.
-/usr/bin/renice 19 -p $$ > /dev/null 2>&1
+# do less harm.
+renice 19 -p $$ > /dev/null 2>&1
 #
 #  This script assumes that:
 #   You have ISOs in ~/build/centos7_simple_kickstart/isos
@@ -55,6 +55,38 @@ umask 007
 CURRENT_TIME=`date '+%Y%m%d%H%M%S'`
 export CURRENT_TIME
 
+LANG=C;LC_ALL=C;S_TIME_FORMAT=ISO;export LANG LC_ALL S_TIME_FORMAT
+
+##
+## Determine if we are in Cygwin or Mac
+if [ -d /cygdrive ] ; then
+MYOS="cyg"
+elif [ -d /etc/redhat-release ] ; then
+MYOS="red"
+elif [ -d /Users ] ; then
+MYOS="mac"
+else
+MYOS="unknown"
+fi
+export MYOS
+
+PATH="/sbin:/usr/sbin:/bin:/usr/bin::${HOME}/build/centos7_simple_kickstart/scripts"
+
+if [ ${MYOS} = 'mac' ] ; then
+PATH="${PATH}:/Applications/VirtualBox.app/Contents/MacOS"
+
+elif [ ${MYOS} = 'red' ] ; then
+PATH="${PATH}"
+## This may eventually get updated.
+
+elif [ ${MYOS} = 'cyg' ] ; then
+PATH="${PATH}:/cygdrive/c/Program Files/Oracle/VirtualBox/"
+
+
+fi
+export PATH
+
+
 # Validate GPG Signatures:  https://www.centos.org/keys/#centos-7-keys
 # Perhaps a location to get GPG keys over HTTPS from a non mirror:  https://git.centos.org/repositories/
 # Discuss GPG keys:  https://www.centos.org/community/calendar/#list
@@ -64,8 +96,6 @@ export CURRENT_TIME
 ############################### LOCALNET_INSTANTIATE
 localnet_instantiate()
 {
-PATH=${PATH}:/Applications/VirtualBox.app/Contents/MacOS:/bin:/sbin:/usr/bin:/usr/sbin:${HOME}/build/centos7_simple_kickstart/scripts
-export PATH
 #
 # Create vboxnet local interface
 # VBox is slow to instantiate the interfaces and will return a result code before it completes...
@@ -106,7 +136,7 @@ sync
 
 
 ############################### LOCALNET_RSYYNC_AND_HTTPD
-localnet_httpd_and_rsync_listeners()
+localnet_mac()
 {
 mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html
 mkdir -p ${HOME}/build/centos7_simple_kickstart/logs
@@ -180,13 +210,8 @@ done
 cat << zzzRSYNCzzz > ${HOME}/build/centos7_simple_kickstart/etc/rsyncd.conf
 uid = ${USER}
 use chroot = no
-max connections = 255
-lock file = ${HOME}/build/centos7_simple_kickstart/tmp/rsyncd.lock
-log file = ${HOME}/build/centos7_simple_kickstart/logs/rsyncd.log
-pid file = ${HOME}/build/centos7_simple_kickstart/tmp/rsyncd.pid 
 syslog facility = local5
 strict modes = false
-hosts allow = 192.168.120.0/24
 reverse lookup = no
 timeout = 30
 dont compress = *.gz *.tgz *.zip *.rpm *.bz2 *.7z *.rar *.jp* *.gif *.png *.mp*
@@ -202,26 +227,54 @@ zzzRSYNCzzz
 
 sync
 # RSYNC START
-if [ -s ${HOME}/build/centos7_simple_kickstart/tmp/rsyncd.pid ] ; then
-kill -9 `cat ${HOME}/build/centos7_simple_kickstart/tmp/rsyncd.pid && rm -f ${HOME}/build/centos7_simple_kickstart/tmp/rsyncd.pid`
-fi
-sync
-sleep 1
-printf "\nStarting Local RSYNCD Listener:  "
-for mysync in `seq 7`
-do
-RSYNCRUNNING=`sleep 1;sync;netstat -an | grep LISTEN | egrep -c "192\.168\.120\.1\.10873"`
-if [ ${RSYNCRUNNING} -lt 1 ] ; then
-rm -f ${HOME}/build/centos7_simple_kickstart/tmp/rsync*
-rsync --daemon --ipv4 --address=192.168.120.1 --port=10873 --config=${HOME}/build/centos7_simple_kickstart/etc/rsyncd.conf
-sync
-sleep ${mysync}
-printf "."
-fi
-done
+rsync --daemon --ipv4 --address=192.168.120.1 --port=10873 --config=${HOME}/build/centos7_simple_kickstart/etc/rsyncd.conf >/dev/null 2>&1
 
 }
 ############################### LOCALNET_RSYYNC_AND_HTTPD
+
+
+
+############################### localnet_cyg
+
+localnet_cyg()
+{
+##
+## Anaconda / Kickstart uses Byte Range headers
+RANGECOUNT=`pip2.7 list | grep -c rangehttpserver`
+if [ ${RANGECOUNT} -lt 1 ] ; then
+pip2.7 install rangehttpserver
+fi
+python2.7 -m RangeHTTPServer 8888 &
+
+##
+## rsync
+cat << zzzRSYNCCIGzzz > ${HOME}/build/centos7_simple_kickstart/etc/rsyncd.conf
+uid = ${USER}
+use chroot = no
+syslog facility = local5
+strict modes = false
+reverse lookup = no
+timeout = 30
+dont compress = *.gz *.tgz *.zip *.rpm *.bz2 *.7z *.rar *.jp* *.gif *.png *.mp*
+#refuse options = checksum delete
+refuse options = delete
+[www]
+list = true
+comment = "www"
+path = ${HOME}/build/centos7_simple_kickstart/www
+read only = yes
+
+zzzRSYNCCIGzzz
+
+sync
+# RSYNC START
+rsync --daemon --ipv4 --address=192.168.120.1 --port=10873 --config=${HOME}/build/centos7_simple_kickstart/etc/rsyncd.conf >/dev/null 2>&1
+
+
+}
+
+############################### localnet_cyg
+
 
 
 ############################### UPDATE_SSH_CONFIG
@@ -734,25 +787,45 @@ set +u
 case "$1" in
 
 listeners)
+if [ ${MYOS} = 'mac' ] ; then
 	localnet_instantiate;
-	localnet_httpd_and_rsync_listeners;
+	localnet_mac;
+elif [ ${MYOS} = 'cyg' ] ; then
+	localnet_cyg;
+fi
 	;;
 repo_sync)
+if [ ${MYOS} = 'mac' ] ; then
 	localnet_instantiate;
-	localnet_httpd_and_rsync_listeners;
+	localnet_mac;
+elif [ ${MYOS} = 'cyg' ] ; then
+	localnet_cyg;
+fi
 	repo_sync;
 	;;
 repo_sync_6)
+
+if [ ${MYOS} = 'mac' ] ; then
 	localnet_instantiate;
-	localnet_httpd_and_rsync_listeners;
+	localnet_mac;
+elif [ ${MYOS} = 'cyg' ] ; then
+	localnet_cyg;
+fi
+
 	repo_sync_6;
 	;;
 ssh_config)
 	ssh_config;
 	;;
 build_ks)
+
+if [ ${MYOS} = 'mac' ] ; then
 	localnet_instantiate;
-	localnet_httpd_and_rsync_listeners;
+	localnet_mac;
+elif [ ${MYOS} = 'cyg' ] ; then
+	localnet_cyg;
+fi
+
 	build_ks;
 	;;
 build_docker)
