@@ -1,5 +1,9 @@
 # CentOS 7 Simple Kickstart
 
+# SOON TO BE DEPRECATED
+
+Background: I have supported Redhat since its inception.  I have assisted countless companies in migrating from proprietary unix to Redhat Linux.  Sorry to say, this has reached its end.  Redhat have embraced bloatware and soon to be spyware.  Going forward I will be assisting companies in moving away from Redhat Linux and CentOS.
+
 # Goals:
 <p>
 <ul>
