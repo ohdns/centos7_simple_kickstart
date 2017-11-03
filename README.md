@@ -1,8 +1,8 @@
 # CentOS 7 Simple Kickstart
 
-# SOON TO BE DEPRECATED
-
 Background: I have supported Redhat since its inception.  I have assisted countless companies in migrating from proprietary unix to Redhat Linux.  Sorry to say, this has reached its end.  Redhat have embraced bloatware and soon to be spyware.  Going forward I will be assisting companies in moving away from Redhat Linux and CentOS.
+
+I will keep this repo around for a while.  Feel free to fork it if you find it at all useful. My focus will be on CoreOS for containers and Alpine for everything else.
 
 # Goals:
 <p>
@@ -201,4 +201,4 @@ Power On Headless (No GUI / console):<br />
 ___
 <p><b><br />Disclaimer: This software repository contains scripts that are for educational purposes only.  This repo contains default passwords that must not be used anywhere beyond VirtualBox on your laptop for educational purposes only. DO NOT use this to deploy a production environment unless you have properly changed all defaults, changed settings to reflect that which is approved for your environment and have properly tested this in a lab and staging area that matches your live environments.  The author of these scripts assumes no responsibility for damages to persons or property.  Do not bridge any VM's to a network outside of localnet without first understanding the potential consequences and having the appropriate personnel in your organization validate and accept the risks.<br /><br /></b>TL;DR - <i>Get someone else to sign off and accept the risk for using someone elses scripts in your environment.</i><br /><br /></p>
 ___
-<i>20171023</i>
+<i>20171103</i>
