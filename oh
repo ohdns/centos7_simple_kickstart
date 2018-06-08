@@ -25,7 +25,7 @@ set -u
 renice 19 -p $$ > /dev/null 2>&1
 #
 #  This script assumes that:
-#   You have ISOs in ~/build/centos7_simple_kickstart/isos
+#   You have ISOs in ~/build/centos7_simple_kickstart/www/html/mirror/centos/7/isos/x86_64
 #   Your VM's will live in ~/build/centos7_simple_kickstart/vm/__instance_name__
 #
 #  We are avoiding Vagrant on purpose so that you may
@@ -393,7 +393,6 @@ printf "\n\nSyncing Public to Local Repo Copies.\n\nIMPORTANT: Avoid running thi
 mkdir -p ${HOME}/build/centos7_simple_kickstart/etc
 mkdir -p ${HOME}/build/centos7_simple_kickstart/scripts
 mkdir -p ${HOME}/build/centos7_simple_kickstart/tmp
-mkdir -p ${HOME}/build/centos7_simple_kickstart/isos/x86_64
 mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/kickstart
 mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/config_files
 #
@@ -402,6 +401,7 @@ mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/os/x86_
 mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/updates/x86_64
 mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/extras/x86_64
 mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/centosplus/x86_64
+mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/isos/x86_64
 mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/7/x86_64
 #mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/dag/el7/en/x86_64
 #
@@ -409,11 +409,11 @@ mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/7/x86_64
 RS="rsync -avH --progress --delay-updates --delete --delete-after --exclude=repoview/ --exclude=debug/ --exclude=drpms/";export RS
 #
 # CENTOS 7 repo sync
-${RS} mirrors.edge.kernel.org::centos/7/isos/x86_64/CentOS-7-x86_64-NetInstall*iso ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.
-${RS} mirrors.edge.kernel.org::centos/7/os/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/os/x86_64/.
-${RS} mirrors.edge.kernel.org::centos/7/updates/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/updates/x86_64/.
-${RS} mirrors.edge.kernel.org::centos/7/extras/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/extras/x86_64/.
-${RS} mirrors.edge.kernel.org::centos/7/centosplus/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/centosplus/x86_64/.
+${RS} mirrors.ocf.berkeley.edu::centos/7/os/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/os/x86_64/.
+${RS} mirrors.ocf.berkeley.edu::centos/7/updates/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/updates/x86_64/.
+${RS} mirrors.ocf.berkeley.edu::centos/7/extras/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/extras/x86_64/.
+${RS} mirrors.ocf.berkeley.edu::centos/7/centosplus/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/centosplus/x86_64/.
+${RS} --exclude=**torrent --exclude=*Live* --exclude=*Every* --exclude=*DVD* --exclude=*Minim*  mirrors.ocf.berkeley.edu::centos/7/isos/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/isos/x86_64/.
 #
 ##  EPEL repo sync
 ##  Uncomment next line if you do want a copy of the Fedora EPEL repo.  It is about 8GB or so.
@@ -423,10 +423,10 @@ ${RS} mirrors.cat.pdx.edu::fedora-epel/7/x86_64/. ${HOME}/build/centos7_simple_k
 #${RS} apt.sw.be::pub/freshrpms/pub/dag/redhat/el7/en/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/dag/el7/en/x86_64/.
 
 # validate ISO
-curl -A Mozilla -s https://wiki.centos.org/Manuals/ReleaseNotes/CentOS7 -o ${HOME}/build/centos7_simple_kickstart/www/html/mirror/c7_notes.html
-shasum -a 256 ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS*NetInsta*.iso > ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.validate_iso.txt
+curl -A Mozilla -s -H "Accept: */*" -H "Accept-Language: en" --url "https://wiki.centos.org/Manuals/ReleaseNotes/CentOS7.1804?action=show&redirect=Manuals%2FReleaseNotes%2FCentOS7" -o ${HOME}/build/centos7_simple_kickstart/www/html/mirror/c7_notes.html
+shasum -a 256 ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/isos/x86_64/CentOS*NetInsta*.iso > ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/isos/x86_64/.validate_iso.txt
 NOTESUM=`egrep "CentOS.*NetInsta.*\.iso" ${HOME}/build/centos7_simple_kickstart/www/html/mirror/c7_notes.html | awk -F ">" {'print $3'} | awk {'print $1'}`
-LOCALSUM=`awk {'print $1'} ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.validate_iso.txt`
+LOCALSUM=`awk {'print $1'} ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/isos/x86_64/.validate_iso.txt`
 printf "\n\nChecksum of ISO from centos.org: ${NOTESUM}\nChecksum of Local ISO: ${LOCALSUM}\n\n"
 #
 # VirtualBox GPG Key
@@ -455,33 +455,6 @@ chmod 0644 ${HOME}/build/centos7_simple_kickstart/www/html/kickstart/c7*cfg
 
 }
 ############################### REPO_SYNC
-
-
-############################### REPO_SYNC_6
-repo_sync_6()
-{
-#RS="rsync -avH --progress --delay-updates --delete --delete-after --exclude=repoview/ --exclude=debug/ --exclude=drpms/";export RS
-#
-# Undocumented sync of CentOS 6 that some folks may need.
-#
-## CENTOS 6 directories
-echo "Disabled C6 rsync.  Uncomment in "oh" script."
-exit 1;
-#mkdir -p ${HOME}/build/centos7_simple_kickstart/isos/x86_64
-#mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/os/x86_64
-#mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/updates/x86_64
-#mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/extras/x86_64
-#mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/6/x86_64
-##mkdir -p ${HOME}/build/centos7_simple_kickstart/www/html/mirror/dag/el6/en/x86_64
-##
-## CENTOS 6 repo sync
-#${RS} mirrors.edge.kernel.org::centos/6/isos/x86_64/CentOS*stall*.iso ${HOME}/build/centos7_simple_kickstart/isos/x86_64/.
-#${RS} mirrors.edge.kernel.org::centos/6/os/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/os/x86_64/.
-#${RS} mirrors.edge.kernel.org::centos/6/updates/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/updates/x86_64/.
-#${RS} mirrors.edge.kernel.org::centos/6/extras/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/6/extras/x86_64/.
-#${RS} mirrors.cat.pdx.edu::fedora-epel/6/x86_64/. ${HOME}/build/centos7_simple_kickstart/www/html/mirror/epel/6/x86_64/.
-}
-############################### REPO_SYNC_6
 
 
 ############################### BUILD_KS
@@ -518,12 +491,12 @@ VBoxManage createhd --filename "${HOME}/build/centos7_simple_kickstart/vm/${MYNA
 VBoxManage storageattach ${MYNAME1} --storagectl mysata --port 0 --medium ${HOME}/build/centos7_simple_kickstart/vm/${MYNAME1}/${MYNAME1}_os.vdi --type hdd
 fi
 #
-if [ -f ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1611.iso ] ; then
+if [ -f ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/isos/x86_64/CentOS-7-x86_64-NetInstall-1804.iso ] ; then
 VBoxManage storagectl ${MYNAME1} --name myide --add ide --controller PIIX4 --portcount 2 --hostiocache on
-VBoxManage storageattach ${MYNAME1} --storagectl myide --port 0 --device 0 --type dvddrive --medium ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1611.iso --type dvddrive --tempeject on
+VBoxManage storageattach ${MYNAME1} --storagectl myide --port 0 --device 0 --type dvddrive --medium ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/isos/x86_64/CentOS-7-x86_64-NetInstall-1804.iso --type dvddrive --tempeject on
 else
-printf "\n\nThe NetInstall ISO ${HOME}/build/centos7_simple_kickstart/isos/x86_64/CentOS-7-x86_64-NetInstall-1611.iso we expected appears to be missing.\n\n"
-ls -anhnto ${HOME}/build/centos7_simple_kickstart/isos/x86_64/*NetInstall*iso
+printf "\n\nThe NetInstall ISO ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/isos/x86_64/CentOS-7-x86_64-NetInstall-1804.iso we expected appears to be missing.\n\n"
+ls -anhnto ${HOME}/build/centos7_simple_kickstart/www/html/mirror/centos/7/isos/x86_64/*NetInstall*iso
 exit 2
 fi
 #
