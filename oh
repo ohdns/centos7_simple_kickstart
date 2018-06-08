@@ -2,7 +2,7 @@
 set -o posix
 set -u
 #
-# Copyright 2015, Aaron W. @ohdns.org
+# Copyright 2015,, 2016, 2017, 2018 Aaron W. @ohdns.org
 # All Rights Reserved.
 # This software may be freely redistributed and/or modified under the
 # terms of the GNU General Public License as published by the Free
