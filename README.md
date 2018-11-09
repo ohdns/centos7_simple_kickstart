@@ -1,11 +1,10 @@
 # CentOS 7 Simple Kickstart
 
-Background: I have supported Redhat since its inception and every *nix/VMS/Dynix prior to that.  I have assisted countless companies in migrating from proprietary unix to Redhat Linux.  Sorry to say, this has reached its end.  Redhat have embraced systemd, a framework that has a strong potential to compromise corporations and individual privacy.  Going forward I will be assisting companies in moving away from Redhat Linux and CentOS.
+Loosely maintained.  My primary focus will be moving services to docker images and using smaller and lighter systemd-less
+distros like Alpine Linux [0] and CoreOS [1].
 
-I will keep this repo around for a while.  Feel free to fork it if you find it at all useful. My focus will be on CoreOS [0] for containers and Alpine Linux [1] for everything else.
-
-[0] https://coreos.com/
-[1] https://alpinelinux.org/
+[0] https://alpinelinux.org/
+[1] https://coreos.com/
 
 # Goals:
 <p>
