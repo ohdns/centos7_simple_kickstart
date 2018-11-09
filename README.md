@@ -182,6 +182,8 @@ ___
 
 <li>TO-DO: <s>Add cron entry to the _kickstart_ VM to periodically sync its mirror of CentOS and EPEL from the Laptop.</s> <b>Completed.</b></li>
 
+<li>Known Issue: The <b>oh</b> script does not currently pass ShellCheck best practices. WIP</li>
+
 <li>WORKS AS DESIGNED: There is currently a bit of customization in the kickstart files.  <b>This is on purpose.</b>  We start with functional customizations in kickstart, so that <b>anyone</b> can easily figure out what needs to be customized in Ansible, Puppet, Chef, cfengine or whatever their configuration management flavor preference may be.</li>
 
 <li>WORKS AS DESIGNED: I renice this script to avoid blocking any work you are doing. This means if your laptop is under a heavy load, this kickstart build process may go very slow by design.</li>
